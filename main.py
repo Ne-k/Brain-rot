@@ -1,14 +1,14 @@
 import datetime
 import time
 import requests
-import cv2
+# import cv2
 
-# Initialize the camera
-cap = cv2.VideoCapture(0)
+# # Initialize the camera
+# cap = cv2.VideoCapture(0)
 
-# Set the resolution to the highest possible
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+# # Set the resolution to the highest possible
+# cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+# cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 
 # Your TBA API key
 api_key = 'llLEkuNohw1CnhnVMWzJQnzq4fvBud65xCqtEsSBt5RqtwUGMFySJeoqS2YhsTI1 '
@@ -47,38 +47,51 @@ def sort_matches(matches) -> list:
     return sorted_matches
 
 
-def record_match() -> None:
-    # Start recording
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter('output.avi', fourcc, 20.0, (640, 480))
+# def record_match() -> None:
+#     # Start recording
+#     fourcc = cv2.VideoWriter_fourcc(*'XVID')
+#     out = cv2.VideoWriter('output.avi', fourcc, 20.0, (640, 480))
 
-    start_time = time.time()
-    while time.time() - start_time < 120:  # Record for 2 minutes
-        ret, frame = cap.read()
-        if ret:
-            out.write(frame)
+#     start_time = time.time()
+#     while time.time() - start_time < 120:  # Record for 2 minutes
+#         ret, frame = cap.read()
+#         if ret:
+#             out.write(frame)
 
-    # Release everything after recording
-    out.release()
+#     # Release everything after recording
+#     out.release()
+
 
 
 def sort_all_matches(matches: list) -> list:
-    # get qm, sf, f matches by time from the morning to the evening
-    sorted = []
+    qm_matches = []
+    sf_matches = []
+    f_matches = []
+
     for match in matches:
         if match['comp_level'] == 'qm':
-            sorted.append(match.sort(key=lambda x: x['time']))
-        if match['comp_level'] == 'sf':
-            sorted.append(match.sort(key=lambda x: x['time']))
-        if match['comp_level'] == 'f':
-            sorted.append(match.sort(key=lambda x: x['time']))
+            qm_matches.append(match)
+        elif match['comp_level'] == 'sf':
+            sf_matches.append(match)
+        elif match['comp_level'] == 'f':
+            f_matches.append(match)
 
-    return sorted
+    # Sort by time and match number
+    def sort_key(match):
+        return match['time'], match['match_number']
+
+    sorted_matches = []
+    for match_list in [qm_matches, sf_matches, f_matches]:
+        sorted_matches.extend(sorted(match_list, key=sort_key))
+
+    return sorted_matches
+
+
 
 
 def main():
     team_key = 'frc' + input("Enter your team number: ")
-    events = get_events(team_key, 2023)
+    events = get_events(team_key, 2022)
 
     print("Select a competition:")
     for i, event in enumerate(events):
@@ -89,15 +102,11 @@ def main():
     matches = get_matches(team_key, event_key)
     time_sorted = sort_all_matches(matches)
 
-    for match in time_sorted:
-        print(f"Competition Level: {match['comp_level']}, Match Number: {match['match_number']}, "
-              f"Time: {datetime.datetime.fromtimestamp(match['time']).strftime('%I:%M %p')}")
-
-    # while True:
-    #     current_time = time.time()
-    #     for match in matches:
-    #         if match['comp_level'] == 'qm' and match['time'] <= current_time <= match['time'] + 120:
-    #             record_match()
+    while True:
+        current_time = time.time()
+        for match in time_sorted:
+            if match['comp_level'] == 'qm' and match['time'] <= current_time <= match['time'] + 120:
+                record_match()
 
 
 if __name__ == "__main__":
